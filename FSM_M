@@ -1,0 +1,84 @@
+`timescale 1ns / 1ps
+
+module FSM_M(
+    input  logic CLK,
+    input  logic Enter,
+    input  logic [3:0] B,             // multiplier (used for reference, optional here)
+    output logic [1:0] SR_SEL,        // shift register control
+    output logic ACC_LD,              // accumulator load (add current multiplicand)
+    output logic ACC_CLR              // clear accumulator
+);
+
+    typedef enum logic [2:0] {IDLE, LOAD, STEP0, STEP1, STEP2, STEP3, DONE} state_t;
+    state_t CS, NS;
+
+    logic [1:0] count;  // step count for 4-bit B
+
+    // Sequential state update
+    always_ff @(posedge CLK) begin
+        CS <= NS;
+    end
+
+    // Step counter
+    always_ff @(posedge CLK) begin
+        if (CS == LOAD)
+            count <= 0;
+        else if (CS == STEP0 || CS == STEP1 || CS == STEP2)
+            count <= count + 1;
+    end
+
+    // Combinational logic
+    always_comb begin
+        // default outputs
+        SR_SEL = 0;
+        ACC_LD = 0;
+        ACC_CLR = 0;
+        NS = CS;
+
+        case (CS)
+            IDLE: begin
+                NS = (Enter == 1) ? LOAD : IDLE;
+            end
+
+            LOAD: begin
+                SR_SEL = 1;       // Load A into shift register
+                ACC_CLR = 1;      // Clear accumulator
+                NS = STEP0;
+            end
+
+            STEP0: begin
+                SR_SEL = 2;       // Shift A left
+                if (B[0]) ACC_LD = 1; // If B0 is 1, add
+                NS = STEP1;
+            end
+
+            STEP1: begin
+                SR_SEL = 2;
+                if (B[1]) ACC_LD = 1;
+                NS = STEP2;
+            end
+
+            STEP2: begin
+                SR_SEL = 2;
+                if (B[2]) ACC_LD = 1;
+                NS = STEP3;
+            end
+
+            STEP3: begin
+                SR_SEL = 2;
+                if (B[3]) ACC_LD = 1;
+                NS = DONE;
+            end
+
+            DONE: begin
+                SR_SEL = 0;
+                ACC_LD = 0;
+                ACC_CLR = 0;
+                NS = IDLE; // go back to IDLE after done
+            end
+
+            default: NS = IDLE;
+        endcase
+    end
+endmodule
+
