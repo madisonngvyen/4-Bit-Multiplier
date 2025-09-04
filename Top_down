@@ -1,0 +1,61 @@
+ `timescale 1ns / 1ps
+
+module Top_down(
+    input logic CLK,
+    input logic [3:0] A,
+    input logic [3:0] B,
+    input logic Enter,
+    output logic [7:0] segs,
+    output logic [3:0] an
+);
+    logic [7:0] multiplicand, product;
+    logic [1:0] SR_SEL;
+    logic ACC_LD, ACC_CLR;
+
+    // FSM to drive multiplication
+    FSM_M fsm (
+        .CLK(CLK),
+        .Enter(Enter),
+        .B(B),
+        .SR_SEL(SR_SEL),
+        .ACC_LD(ACC_LD),
+        .ACC_CLR(ACC_CLR)
+    );
+
+    // Shift register for multiplicand
+    ShiftRegister sr (
+        .clk(CLK),
+        .CLR(0),                 // You can wire this to FSM if needed
+        .D({4'b0000, A}),        // Zero-extend A to 8 bits
+        .SEL(SR_SEL),
+        .Q(multiplicand)
+    );
+
+    // Accumulator for product
+    Accumulator acc (
+        .clk(CLK),
+        .LD(ACC_LD),
+        .CLR(ACC_CLR),
+        .D(multiplicand),
+        .Q(product)
+    );
+
+    // Display on 7-segment (only using cnt1)
+    univ_sseg display (
+        .cnt1({6'b0, product}),
+        .cnt2(7'b0),
+        .valid(1),
+        .clk(CLK),
+        .dp_en(1'b0),        // No decimal point
+        .dp_sel(2'b00),       // Right-most digit
+        .mod_sel(2'b00),      // 8-bit count (0-255)
+        .sign(1'b0),          // No negative sign
+        .ssegs(segs),
+        .disp_en(an)
+    );
+
+
+
+endmodule
+
+
