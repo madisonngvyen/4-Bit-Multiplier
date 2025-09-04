@@ -1,0 +1,23 @@
+`timescale 1ns / 1ps
+
+module ShiftRegister(
+    input logic clk,
+    input logic CLR,
+    input logic [7:0] D,
+    input logic [1:0] SEL,       // 1 = load A, 2 = shift A left, 0 = hold
+    output logic [7:0] Q = 0
+);
+
+    always_ff @ (posedge clk) begin
+        if (CLR)
+            Q <= 0;
+        else case (SEL)
+            2: Q <= {Q[6:0], 1'b0};  // Shift left
+            1: Q <= D;               // Load A into lower bits
+            default: Q <= Q;         // Hold
+        endcase
+    end
+endmodule
+
+  
+
